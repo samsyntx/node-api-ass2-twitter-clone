@@ -138,16 +138,16 @@ app.get("/user/tweets/feed/", checkValidation, async (request, response) => {
   WHERE follower_id = '${loggedInUserId.user_id}'`;
   const selectFollowingId = await database.all(queryToSelectFollowing);
 
-  const follwingUserIdArray = selectFollowingId.map(
+  const followingUserIdArray = selectFollowingId.map(
     (each) => each.following_user_id
   );
 
   const queryToDisplayTweet = `
   SELECT user.username AS username, tweet.tweet AS tweet, tweet.date_time AS dateTime
   FROM tweet INNER JOIN user ON user.user_id = tweet.user_id
-  WHERE tweet.user_id in (${follwingUserIdArray})
+  WHERE tweet.user_id IN (${followingUserIdArray})
   ORDER BY dateTime DESC
-  LIMIT 4 ;`;
+  LIMIT 4;`;
   const displayingTweet = await database.all(queryToDisplayTweet);
   response.send(displayingTweet);
 });
@@ -335,6 +335,76 @@ app.get(
 app.get("/user/tweets/", checkValidation, async (request, response) => {
   const { username } = request;
   const loggedInUserId = await gettingUserIdWhoIsLogIn(username);
+
+  const queryToSelectTweetId = `
+  SELECT tweet_id
+  FROM tweet
+  WHERE user_id = '${loggedInUserId.user_id}';`;
+  const selectingUserTweetId = await database.all(queryToSelectTweetId);
+
+  const convertIntoList = selectingUserTweetId.map(
+    (eachItem) => eachItem.tweet_id
+  );
+
+  const queryToGetTweetData = `
+  SELECT 
+    tweet.tweet AS tweet, 
+    SUM(like.like_id) AS likes, 
+    SUM(reply.reply_id) AS replies, 
+    tweet.date_time AS dateTime
+  FROM (tweet INNER JOIN like ON tweet.tweet_id = like.tweet_id) AS tweetLike
+     INNER JOIN reply ON tweetLike.tweet_id = reply.tweet_id
+  WHERE 
+    tweet.tweet_id IN (${convertIntoList})
+  GROUP BY 
+    tweet.tweet_id ;`;
+  const displayTweetData = await database.all(queryToGetTweetData);
+  response.send(displayTweetData);
+});
+
+// API 10
+app.post("/user/tweets/", checkValidation, async (request, response) => {
+  const { username } = request;
+  const loggedInUserId = await gettingUserIdWhoIsLogIn(username);
+
+  const { tweet } = request.body;
+
+  const currentDateTime = new Date();
+
+  const queryToCreateTweet = `
+  INSERT INTO tweet(tweet, user_id, date_time)
+  VALUES ('${tweet}', '${loggedInUserId.user_id}', '${currentDateTime}');`;
+  await database.run(queryToCreateTweet);
+  response.send("Created a Tweet");
+});
+
+// API 11
+app.delete("/tweets/:tweetId/", checkValidation, async (request, response) => {
+  const { username } = request;
+  const loggedInUserId = await gettingUserIdWhoIsLogIn(username);
+
+  const { tweetId } = request.params;
+
+  const queryToGetTweetIds = `
+  SELECT tweet_id
+  FROM tweet 
+  WHERE user_id = '${loggedInUserId.user_id}';`;
+  const gettingLogInUserTweetId = await database.all(queryToGetTweetIds);
+
+  const creatingList = gettingLogInUserTweetId.map(
+    (eachItem) => eachItem.tweet_id
+  );
+
+  if (tweetId in creatingList) {
+    const queryToDeleteTweet = `
+      DELETE FROM tweet
+      WHERE tweet_id = '${tweetId}';`;
+    await database.run(queryToDeleteTweet);
+    response.send("Tweet Removed");
+  } else {
+    response.status(401);
+    response.send("Invalid Request");
+  }
 });
 
 module.exports = app;
