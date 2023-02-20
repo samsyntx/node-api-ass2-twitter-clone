@@ -40,3 +40,20 @@ Authorization: bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6IkpvZ
 ### API 8 /tweets/:tweetId/replies/
 GET http://localhost:3000/tweets/:tweetId/replies/
 Authorization: bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6IkpvZUJpZGVuIiwiaWF0IjoxNjc2ODA4MjI4fQ.4lxK5M49QaYJI2diZZomcECTbOSnSXeNor2tN7Z2DKU
+
+### API 9 
+GET http://localhost:3000/user/tweets/
+Authorization: bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6IkpvZUJpZGVuIiwiaWF0IjoxNjc2ODA4MjI4fQ.4lxK5M49QaYJI2diZZomcECTbOSnSXeNor2tN7Z2DKU
+
+### API 10 /user/tweets/
+POST http://localhost:3000/user/tweets/
+Authorization: bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6IkpvZUJpZGVuIiwiaWF0IjoxNjc2ODA4MjI4fQ.4lxK5M49QaYJI2diZZomcECTbOSnSXeNor2tN7Z2DKU
+Content-Type: application/json
+
+{
+   "tweet": "The Mornings..."
+}
+
+### API 11 /tweets/:tweetId/
+DELETE http://localhost:3000/tweets/11/
+Authorization: bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6IkpvZUJpZGVuIiwiaWF0IjoxNjc2ODA4MjI4fQ.4lxK5M49QaYJI2diZZomcECTbOSnSXeNor2tN7Z2DKU
