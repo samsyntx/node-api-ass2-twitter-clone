@@ -154,20 +154,42 @@ app.get("/user/tweets/feed/", checkValidation, async (request, response) => {
   const displayingTweet = await database.all(queryToDisplayTweet);
   response.send(displayingTweet);
 });
-
 // API 4
 app.get("/user/following/", checkValidation, async (request, response) => {
   const { username } = request;
   const loggedInUserId = await gettingUserIdWhoIsLogIn(username);
 
-  const queryToSelectFollowing = `
+  const queryToSelectFollower = `
   SELECT following_user_id
   FROM follower
-  WHERE follower_id = '${loggedInUserId.user_id}'`;
-  const selectFollowingId = await database.all(queryToSelectFollowing);
+  WHERE follower_user_id = '${loggedInUserId.user_id}'`;
+  const selectFollowingId = await database.all(queryToSelectFollower);
 
   const turningIntoList = selectFollowingId.map(
     (each) => each.following_user_id
+  );
+
+  const queryToDisplayNameFollower = ` 
+  SELECT name
+  FROM user
+  WHERE user_id IN (${turningIntoList});`;
+  const displayNameOfFollowers = await database.all(queryToDisplayNameFollower);
+  response.send(displayNameOfFollowers);
+});
+
+// API 5
+app.get("/user/followers/", checkValidation, async (request, response) => {
+  const { username } = request;
+  const loggedInUserId = await gettingUserIdWhoIsLogIn(username);
+
+  const queryToSelectFollowing = `
+  SELECT follower_user_id
+  FROM follower
+  WHERE following_user_id = '${loggedInUserId.user_id}'`;
+  const selectFollowingId = await database.all(queryToSelectFollowing);
+
+  const turningIntoList = selectFollowingId.map(
+    (each) => each.follower_user_id
   );
 
   const queryToDisplayName = `
@@ -176,29 +198,6 @@ app.get("/user/following/", checkValidation, async (request, response) => {
   WHERE user_id IN (${turningIntoList});`;
   const displayName = await database.all(queryToDisplayName);
   response.send(displayName);
-});
-
-// API 5
-app.get("/user/followers/", checkValidation, async (request, response) => {
-  const { username } = request;
-  const loggedInUserId = await gettingUserIdWhoIsLogIn(username);
-
-  const queryToSelectFollower = `
-  SELECT follower_user_id
-  FROM follower
-  WHERE follower_id = '${loggedInUserId.user_id}'`;
-  const selectFollowingId = await database.all(queryToSelectFollower);
-
-  const turningIntoList = selectFollowingId.map(
-    (each) => each.follower_user_id
-  );
-
-  const queryToDisplayNameFollower = `
-  SELECT name
-  FROM user
-  WHERE user_id IN (${turningIntoList});`;
-  const displayNameOfFollowers = await database.all(queryToDisplayNameFollower);
-  response.send(displayNameOfFollowers);
 });
 
 // API 6
@@ -339,18 +338,9 @@ app.get("/user/tweets/", checkValidation, async (request, response) => {
   const { username } = request;
   const loggedInUserId = await gettingUserIdWhoIsLogIn(username);
 
-  const queryToSelectTweetId = `
-  SELECT tweet_id
-  FROM tweet
-  WHERE user_id = '${loggedInUserId.user_id}';`;
-  const selectingUserTweetId = await database.all(queryToSelectTweetId);
-
-  const convertIntoList = selectingUserTweetId.map(
-    (eachItem) => eachItem.tweet_id
-  );
-
   const queryToGetTweetData = `
   SELECT 
+    tweet.tweet_id,
     tweet.tweet AS tweet, 
     SUM(like.like_id) AS likes, 
     SUM(reply.reply_id) AS replies, 
@@ -358,7 +348,7 @@ app.get("/user/tweets/", checkValidation, async (request, response) => {
   FROM (tweet INNER JOIN like ON tweet.tweet_id = like.tweet_id) AS tweetLike
      INNER JOIN reply ON tweetLike.tweet_id = reply.tweet_id
   WHERE 
-    tweet.tweet_id IN (${convertIntoList})
+    tweet.tweet_id = (SELECT tweet_id FROM tweet WHERE user_id = '${loggedInUserId.user_id}')
   GROUP BY 
     tweet.tweet_id ;`;
   const displayTweetData = await database.all(queryToGetTweetData);
