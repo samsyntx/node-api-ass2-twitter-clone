@@ -144,9 +144,12 @@ app.get("/user/tweets/feed/", checkValidation, async (request, response) => {
 
   const queryToDisplayTweet = `
   SELECT user.username AS username, tweet.tweet AS tweet, tweet.date_time AS dateTime
-  FROM tweet INNER JOIN user ON user.user_id = tweet.user_id
-  WHERE tweet.user_id IN (${followingUserIdArray})
-  ORDER BY dateTime DESC
+  FROM 
+    follower INNER JOIN tweet
+    ON follower.following_user_id = tweet.user_id INNER JOIN user
+    ON tweet.user_id = user.user_id
+  WHERE follower.follower_user_id = '${loggedInUserId.user_id}'
+  ORDER BY tweet.date_time DESC
   LIMIT 4;`;
   const displayingTweet = await database.all(queryToDisplayTweet);
   response.send(displayingTweet);
@@ -384,6 +387,7 @@ app.delete("/tweets/:tweetId/", checkValidation, async (request, response) => {
   const loggedInUserId = await gettingUserIdWhoIsLogIn(username);
 
   const { tweetId } = request.params;
+  const tweetIdInt = parseInt(tweetId);
 
   const queryToGetTweetIds = `
   SELECT tweet_id
@@ -395,7 +399,9 @@ app.delete("/tweets/:tweetId/", checkValidation, async (request, response) => {
     (eachItem) => eachItem.tweet_id
   );
 
-  if (tweetId in creatingList) {
+  const isTweetIdValid = creatingList.includes(tweetIdInt);
+
+  if (isTweetIdValid === true) {
     const queryToDeleteTweet = `
       DELETE FROM tweet
       WHERE tweet_id = '${tweetId}';`;
