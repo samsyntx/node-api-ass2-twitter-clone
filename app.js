@@ -207,27 +207,25 @@ app.get("/tweets/:tweetId/", checkValidation, async (request, response) => {
 
   const { tweetId } = request.params;
 
-  const queryToGetFollowing = `
-  SELECT following_user_id
-  FROM follower
-  WHERE follower_id = '${loggedInUserId.user_id}';`;
-  const gettingFollowingId = await database.all(queryToGetFollowing);
-
-  const FollowingIdTurningIntoList = gettingFollowingId.map(
-    (each) => each.following_user_id
-  );
-
   const getTweetIdQuery = `
   SELECT tweet_id
   FROM tweet
-  WHERE user_id IN (${FollowingIdTurningIntoList});`;
-  const selectTweetId = await database.get(getTweetIdQuery);
+  WHERE user_id = (
+        SELECT following_user_id
+        FROM follower
+        WHERE follower_user_id = '${loggedInUserId.user_id}'
+  );`;
+  const selectTweetId = await database.all(getTweetIdQuery);
 
-  if (selectTweetId.tweet_id === tweetId) {
+  const TweetIdsInList = selectTweetId.map((eachItem) => eachItem.tweet_id);
+  const isValidTweetId = TweetIdsInList.includes(parseInt(tweetId));
+
+  if (isValidTweetId === true) {
     const queryToGetTweetCount = `
-      SELECT tweet.tweet AS tweet, SUM(like.like_id) AS likes,  SUM(reply.reply_id) AS replies, tweet.date_time AS dateTime
-      FROM (tweet JOIN reply ON tweet.tweet_id = reply.tweet_id) AS tweetReply JOIN like ON tweetReply.tweet_id = like.tweet_id
-      WHERE tweet.tweet_id = '${tweetId}';`;
+      SELECT tweet.tweet AS tweet, COUNT(like.like_id) AS likes,  COUNT(reply.reply_id) AS replies, tweet.date_time AS dateTime
+      FROM tweet JOIN reply ON tweet.tweet_id = reply.tweet_id JOIN like ON tweet.tweet_id = like.tweet_id
+      WHERE tweet.tweet_id = '${tweetId}'
+      GROUP BY tweet.tweet_id;`;
     const displayTweet = await database.get(queryToGetTweetCount);
     response.send(displayTweet);
   } else {
@@ -339,18 +337,19 @@ app.get("/user/tweets/", checkValidation, async (request, response) => {
   const loggedInUserId = await gettingUserIdWhoIsLogIn(username);
 
   const queryToGetTweetData = `
-  SELECT 
-    tweet.tweet_id,
-    tweet.tweet AS tweet, 
-    SUM(like.like_id) AS likes, 
-    SUM(reply.reply_id) AS replies, 
-    tweet.date_time AS dateTime
-  FROM (tweet INNER JOIN like ON tweet.tweet_id = like.tweet_id) AS tweetLike
-     INNER JOIN reply ON tweetLike.tweet_id = reply.tweet_id
-  WHERE 
-    tweet.tweet_id = (SELECT tweet_id FROM tweet WHERE user_id = '${loggedInUserId.user_id}')
-  GROUP BY 
-    tweet.tweet_id ;`;
+    SELECT
+      tweet.tweet AS tweet,
+      COUNT(like.like_id) AS likes,
+      COUNT(reply.reply_id) AS replies,
+      tweet.date_time AS dateTime
+    FROM tweet INNER JOIN like ON tweet.tweet_id = like.tweet_id
+       INNER JOIN reply ON tweet.tweet_id = reply.tweet_id
+    WHERE
+      tweet.tweet_id = (SELECT tweet_id
+            FROM tweet
+            WHERE user_id = '${loggedInUserId.user_id}')
+    GROUP BY
+      tweet.tweet_id ;`;
   const displayTweetData = await database.all(queryToGetTweetData);
   response.send(displayTweetData);
 });
