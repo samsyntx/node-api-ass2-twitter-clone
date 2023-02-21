@@ -252,14 +252,16 @@ app.get(
 
     const { tweetId } = request.params;
 
+    const getFollowingIdsQuery = `select following_user_id from follower where follower_user_id=${loggedInUserId.user_id};`;
+    const getFollowingIdsArray = await database.all(getFollowingIdsQuery);
+    const getFollowingIds = getFollowingIdsArray.map((eachFollower) => {
+      return eachFollower.following_user_id;
+    });
+
     const getTweetIdQuery = `
   SELECT tweet_id
   FROM tweet
-  WHERE user_id = (
-        SELECT following_user_id
-        FROM follower
-        WHERE follower_user_id = '${loggedInUserId.user_id}'
-  );`;
+  WHERE user_id IN (${getFollowingIds});`;
     const selectTweetId = await database.all(getTweetIdQuery);
 
     const tweetIdInList = selectTweetId.map((eachItem) => eachItem.tweet_id);
